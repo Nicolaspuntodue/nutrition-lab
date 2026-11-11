@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cosa mangio oggi?</title>
+<meta name="description" content="Rispondi a qualche domanda e ottieni la tua giornata: colazione, pranzo, spuntino e cena con dosi e macro. Modifica i piatti e segna cosa hai mangiato davvero.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b1f15">
+<!-- Aggiunta alla schermata Home: si apre a schermo intero come un'app -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cosa mangio">
+<style>
+/* Diario alimentare in stile app: font di sistema, schede bianche su grigio iOS, anello calorie e barre macro. */
+/* Un solo tema: verde bosco profondo, schede di vetro smerigliato sopra lo sfondo 3D, testo crema, accento lime. */
+:root{
+  color-scheme:dark;
+  --bg:#0b1f15;--bg2:#123524;--card:rgba(18,48,33,.62);--solid:#143826;--fill:rgba(255,255,255,.08);--fill2:rgba(255,255,255,.13);
+  --ink:#f4f1e6;--muted:#a9bcae;--sep:rgba(255,255,255,.09);--edge:rgba(255,255,255,.10);
+  --tint:#b5e655;--tint-soft:rgba(181,230,85,.16);--on-tint:#10260f;--bar:rgba(11,31,21,.55);
+  --pro:#a29bfe;--carb:#ffb340;--fat:#64d2ff;--over:#ff8a5c;--off:#ffc27a;--off-soft:rgba(255,160,60,.16);--danger:#ff6b5e;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;
+  --r:22px;
+}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:block}
+.list,.sum,.meal,.day{-webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);box-shadow:inset 0 0 0 1px var(--edge)}
+@media (prefers-reduced-transparency:reduce){:root{--card:var(--solid)}.list,.sum,.meal,.day{backdrop-filter:none;-webkit-backdrop-filter:none}}
+*{box-sizing:border-box;margin:0}
+html{-webkit-text-size-adjust:100%}
+html,body{overflow-x:clip}
+body{background:radial-gradient(120% 80% at 80% 0%,var(--bg2),var(--bg) 60%) fixed var(--bg);color:var(--ink);font:400 1.0625rem/1.47 var(--font);-webkit-font-smoothing:antialiased;min-height:100svh}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--tint);outline-offset:2px;border-radius:10px}
+
+/* barra traslucida */
+.bar{position:sticky;top:0;z-index:5;background:var(--bar);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);padding-top:env(safe-area-inset-top)}
+.bar .in{max-width:720px;margin:0 auto;height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bar a{color:var(--tint);text-decoration:none;display:inline-flex;align-items:center;gap:4px;min-height:44px}
+.bar select{appearance:none;background:var(--fill);border:0;border-radius:999px;padding:6px 14px;font-size:.9375rem;min-height:36px}
+@media (prefers-reduced-transparency:reduce){.bar{background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none}}
+
+/* settimana */
+.days{max-width:720px;margin:0 auto;padding:10px 16px 4px;display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none}
+.days::-webkit-scrollbar{display:none}
+.day{flex:none;scroll-snap-align:start;width:52px;min-height:66px;border:0;border-radius:16px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative;transition:transform .1s ease-out}
+.day:active{transform:scale(.95)}
+.day small{font-size:.6875rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+.day b{font:600 1.25rem/1 var(--display);font-variant-numeric:tabular-nums}
+.day.today b{color:var(--tint)}
+.day[aria-pressed="true"]{background:var(--tint);color:var(--on-tint)}
+.day[aria-pressed="true"] small,.day[aria-pressed="true"] b{color:inherit}
+.day.has::after{content:"";position:absolute;bottom:7px;width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.55}
+.day.pick{color:var(--tint);cursor:pointer}
+.day.pick input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+
+main{max-width:720px;margin:0 auto;padding:14px 16px 72px}
+.large{font:700 clamp(2rem,6vw,2.5rem)/1.08 var(--display);letter-spacing:-.022em}
+.sub{color:var(--muted);margin-top:8px;max-width:34em}
+.eyebrow{font-size:.8125rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
+
+/* domande */
+.progress{height:4px;border-radius:2px;background:var(--fill2);overflow:hidden;margin:10px 0 22px}
+.progress span{display:block;height:100%;background:var(--tint);border-radius:2px;transition:width .35s cubic-bezier(.2,.8,.2,1)}
+.q{font:700 1.75rem/1.15 var(--display);letter-spacing:-.018em;margin:6px 0 20px}
+.list{background:var(--card);border-radius:var(--r);overflow:hidden}
+.opt{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:56px;padding:0 18px;background:none;border:0;text-align:left;font-size:1.0625rem;position:relative}
+.opt+.opt::before{content:"";position:absolute;left:18px;right:0;top:0;height:1px;background:var(--sep)}
+.opt:active,.opt.sel{background:var(--fill)}
+.opt svg{flex:none;color:var(--muted)}
+.opt.sel svg{color:var(--tint)}
+.prev{margin-top:18px;background:none;border:0;color:var(--tint);min-height:44px;padding:0}
+
+/* riepilogo del giorno */
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+.sum{background:var(--card);border-radius:var(--r);padding:20px;display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+.ring{position:relative;width:136px;height:136px}
+.ring svg{display:block;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:13}
+.ring .trk{stroke:var(--fill)}
+.ring .val{stroke:var(--tint);stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.2,.8,.2,1)}
+.ring.over .val{stroke:var(--over)}
+.ring .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ring .mid b{font:700 1.875rem/1 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ring .mid span{font-size:.8125rem;color:var(--muted);margin-top:4px}
+.macros{display:flex;flex-direction:column;gap:12px}
+.mrow{display:grid;grid-template-columns:1fr auto;gap:5px 8px;font-size:.9375rem}
+.mrow span{font-weight:600}
+.mrow em{font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums}
+.mbar{grid-column:1/-1;height:8px;border-radius:4px;background:var(--fill);overflow:hidden}
+.mbar i{display:block;height:100%;border-radius:4px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.delta{grid-column:1/-1;border-top:1px solid var(--sep);padding-top:12px;font-size:.9375rem;color:var(--muted);display:flex;align-items:center;gap:8px}
+.delta b{color:var(--ink);font-weight:600}
+.delta i{width:8px;height:8px;border-radius:50%;background:var(--tint);flex:none}
+.delta.up i{background:var(--over)}
+@media (max-width:400px){.sum{grid-template-columns:1fr;justify-items:center}.macros{width:100%}}
+
+/* pasti */
+.meal{background:var(--card);border-radius:var(--r);margin-top:14px;overflow:hidden;scroll-margin-top:72px}
+.meal>header{display:flex;align-items:center;gap:10px;padding:14px 12px 8px 18px}
+.meal h2{font:700 1.1875rem/1.2 var(--display);letter-spacing:-.01em;flex:1}
+.meal header .k{color:var(--muted);font-size:.9375rem;font-variant-numeric:tabular-nums}
+.add{width:36px;height:36px;border-radius:50%;background:var(--tint-soft);color:var(--tint);border:0;display:grid;place-items:center;flex:none;transition:transform .1s ease-out}
+.add:active{transform:scale(.92)}
+.item{display:flex;align-items:center;padding-right:10px;position:relative;transition:opacity .2s ease}
+.item.out{opacity:0}
+.item+.item::before{content:"";position:absolute;left:96px;right:0;top:0;height:1px;background:var(--sep)}
+.row{flex:1;min-width:0;display:flex;align-items:center;gap:14px;padding:10px 8px 10px 18px;background:none;border:0;text-align:left}
+.row:active{background:var(--fill)}
+.thumb{width:64px;height:64px;border-radius:14px;object-fit:cover;flex:none;background:var(--fill);display:grid;place-items:center;color:var(--muted)}
+.tx{min-width:0;flex:1}
+.tx h3{font:600 1rem/1.3 var(--font);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.meta{font-size:.875rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:2px}
+.meta b{color:var(--ink);font-weight:600}
+.chip{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--fill);color:var(--muted);margin-top:5px}
+.chip.off{background:var(--off-soft);color:var(--off)}
+.ibtn{width:40px;height:40px;border-radius:50%;border:0;background:var(--fill);color:var(--ink);display:grid;place-items:center;flex:none;transition:transform .1s ease-out}
+.ibtn:active{transform:scale(.92)}
+.empty{padding:2px 18px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.empty p{width:100%;color:var(--muted);font-size:.9375rem;margin-bottom:4px}
+.pill{border:0;border-radius:999px;min-height:40px;padding:0 16px;font-weight:600;font-size:.9375rem;background:var(--fill);transition:transform .1s ease-out}
+.pill.tint{background:var(--tint);color:var(--on-tint)}
+.pill:active{transform:scale(.96)}
+.redo{background:var(--fill2);border:0;border-radius:999px;padding:0 16px;min-height:40px;font-weight:600;font-size:.9375rem;flex:none}
+.fine{margin-top:24px;font-size:.8125rem;color:var(--muted)}
+
+/* foglio di modifica */
+dialog.sheet{border:0;padding:0;background:var(--solid);color:var(--ink);width:min(560px,calc(100% - 32px));max-height:86svh;border-radius:var(--r);margin:auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+dialog.sheet[open]{display:flex;flex-direction:column;animation:up .32s cubic-bezier(.2,.8,.2,1)}
+dialog.sheet::backdrop{background:rgba(0,0,0,.38)}
+@keyframes up{from{transform:translateY(28px);opacity:0}}
+@media (max-width:600px){dialog.sheet{width:100%;max-width:100%;margin:auto 0 0;border-radius:var(--r) var(--r) 0 0;max-height:92svh}}
+.sh-h{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--sep);flex:none}
+.sh-h h2{font:600 1.0625rem var(--display);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56vw}
+.lnk{background:none;border:0;color:var(--tint);min-height:44px;padding:0 6px;font-size:1.0625rem;justify-self:start}
+.lnk.strong{font-weight:600;justify-self:end}
+.sh-b{overflow:auto;padding:16px 18px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:16px}
+.live{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.live div{background:var(--fill);border-radius:14px;padding:9px 4px;text-align:center}
+.live b{display:block;font:700 1.125rem/1.2 var(--display);font-variant-numeric:tabular-nums}
+.live span{font-size:.75rem;color:var(--muted)}
+.live .kc b{color:var(--tint)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span,.grp>h3{font-size:.8125rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
+.inp{width:100%;background:var(--fill);border:0;border-radius:12px;min-height:46px;padding:0 14px;font-size:1.0625rem}
+.grp{display:flex;flex-direction:column;gap:8px}
+.ings{background:var(--fill);border-radius:16px;overflow:hidden}
+.ingr{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 14px;position:relative}
+.ingr+.ingr::before{content:"";position:absolute;left:14px;right:0;top:0;height:1px;background:var(--sep)}
+.ingr .nm{flex:1;min-width:0;font-size:.9375rem;line-height:1.25}
+.ingr .nm small{display:block;color:var(--muted);font-size:.8125rem}
+.stp{display:flex;align-items:center;background:var(--fill2);border-radius:12px;flex:none}
+.stp button{width:36px;height:40px;border:0;background:none;font-size:1.25rem;line-height:1;color:var(--tint)}
+.stp input{width:52px;border:0;background:none;text-align:center;font-size:1rem;font-variant-numeric:tabular-nums;min-height:40px;-moz-appearance:textfield}
+.stp input::-webkit-inner-spin-button{display:none}
+.stp em{font-style:normal;font-size:.8125rem;color:var(--muted);padding-right:10px}
+.rm{width:32px;height:32px;border-radius:50%;border:0;background:none;color:var(--muted);display:grid;place-items:center;flex:none}
+.addrow{display:flex;gap:8px;flex-wrap:wrap}
+.addrow select{flex:1 1 180px;appearance:none;background:var(--fill) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;border:0;border-radius:12px;min-height:46px;padding:0 36px 0 14px;font-size:1rem}
+.addrow .g{flex:0 0 92px}
+.manual{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.manual label{display:flex;flex-direction:column;gap:4px;font-size:.75rem;color:var(--muted)}
+.manual .inp{padding:0 10px;text-align:center}
+details.grp summary{cursor:pointer;list-style:none;min-height:40px;display:flex;align-items:center;gap:8px;color:var(--tint);font-weight:600;font-size:.9375rem}
+details.grp summary::-webkit-details-marker{display:none}
+.acts{display:flex;flex-direction:column;background:var(--fill);border-radius:16px;overflow:hidden}
+.acts button{background:none;border:0;min-height:50px;text-align:left;padding:0 16px;font-size:1rem;color:var(--tint);position:relative}
+.acts button+button::before{content:"";position:absolute;left:16px;right:0;top:0;height:1px;background:var(--sep)}
+.acts .del{color:var(--danger)}
+.err{color:var(--danger);font-size:.9375rem}
+.hint{color:var(--muted);font-size:.875rem}
+
+.fade{animation:in .3s ease both}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){
+  .fade,dialog.sheet[open]{animation:none}
+  .progress span,.ring .val,.mbar i,.item{transition:none}
+  .day:active,.add:active,.ibtn:active,.pill:active{transform:none}
+}
+</style>
+<script src="oggi-dati.js"></script>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<header class="bar"><div class="in">
+  <a href="index.html" id="home"><svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></a>
+  <select id="lang"><option value="it">Italiano</option><option value="en">English</option><option value="de">Deutsch</option></select>
+</div></header>
+<nav class="days" id="days"></nav>
+<main id="view"></main>
+<dialog class="sheet" id="sheet"></dialog>
+
+<script>
+// "Cosa mangio oggi": poche domande, poi il diario del giorno. Ogni piatto si modifica, e si può segnare cosa si è mangiato fuori programma.
+const T = {
+  it: { title: 'Cosa mangio oggi?', titleOn: 'Cosa mangio {d}?', days: 'Scegli il giorno', pick: 'Un altro giorno', home: 'Sito', lang: 'Lingua',
+    sub: 'Qualche domanda veloce e ti preparo la giornata, con dosi e macro. Poi puoi cambiare i piatti e segnare cosa hai mangiato davvero.',
+    step: 'Domanda {n} di {t}', prev: 'Indietro',
+    q_meal: 'Cosa vuoi decidere?', b: 'Colazione', l: 'Pranzo', d: 'Cena', s: 'Spuntino', day: 'Tutta la giornata',
+    q_taste: 'Dolce o salato?', dolce: 'Dolce', salato: 'Salato', any: 'Va bene tutto',
+    q_crave: 'Di cosa hai voglia?', pasta: 'Pasta', riso: 'Riso', carne: 'Carne', pesce: 'Pesce', uova: 'Uova',
+    q_temp: 'Caldo o freddo?', caldo: 'Caldo, mangio a casa', freddo: 'Freddo, lo porto via',
+    q_hunger: 'Quanta fame hai?', poca: 'Poca', normale: 'Normale', tanta: 'Tanta',
+    r_day: 'La tua giornata', redo: 'Rifai il quiz',
+    kcal: 'kcal', p: 'Proteine', c: 'Carboidrati', f: 'Grassi', ps: 'P', cs: 'C', fs: 'G', of: 'di {n} kcal',
+    onPlan: 'In linea con il piano', above: '<b>{n} kcal</b> sopra il piano', below: '<b>{n} kcal</b> sotto il piano',
+    empty: 'Niente in programma.', suggest: 'Proponi un piatto', ateOther: 'Ho mangiato altro', addTo: 'Aggiungi a {m}',
+    swap: 'Cambia piatto', edited: 'Dosi modificate', offPlan: 'Fuori programma',
+    cancel: 'Annulla', save: 'Salva', name: 'Cosa hai mangiato', namePh: 'Es. pizza margherita al ristorante',
+    ings: 'Ingredienti', addIng: 'Aggiungi', chooseFood: 'Scegli un alimento…', grams: 'g',
+    manual: 'Conosco solo calorie e macro', manualHint: 'Se le inserisci, contano queste al posto degli ingredienti.',
+    reset: 'Ripristina le dosi del piano', replace: 'Ho mangiato altro al posto di questo', remove: 'Togli dalla giornata',
+    errName: 'Scrivi cosa hai mangiato.', errEmpty: 'Aggiungi almeno un ingrediente o le calorie.',
+    eggs: (n) => n === 1 ? '1 uovo' : `${n} uova`, less: 'Meno', more: 'Di più', del: 'Togli',
+    fine: 'Valori stimati con medie da tabella, sul peso a crudo. Non è una prescrizione medica.' },
+  en: { title: 'What should I eat today?', titleOn: 'What should I eat on {d}?', days: 'Pick the day', pick: 'Another day', home: 'Website', lang: 'Language',
+    sub: 'A few quick questions and I plan your day, with portions and macros. Then you can swap dishes and log what you actually ate.',
+    step: 'Question {n} of {t}', prev: 'Back',
+    q_meal: 'What do you want to decide?', b: 'Breakfast', l: 'Lunch', d: 'Dinner', s: 'Snack', day: 'The whole day',
+    q_taste: 'Sweet or savoury?', dolce: 'Sweet', salato: 'Savoury', any: 'Anything is fine',
+    q_crave: 'What do you feel like?', pasta: 'Pasta', riso: 'Rice', carne: 'Meat', pesce: 'Fish', uova: 'Eggs',
+    q_temp: 'Hot or cold?', caldo: 'Hot, I\'m eating at home', freddo: 'Cold, I\'m taking it with me',
+    q_hunger: 'How hungry are you?', poca: 'A little', normale: 'Normal', tanta: 'Very',
+    r_day: 'Your day', redo: 'Retake the quiz',
+    kcal: 'kcal', p: 'Protein', c: 'Carbs', f: 'Fat', ps: 'P', cs: 'C', fs: 'F', of: 'of {n} kcal',
+    onPlan: 'On plan', above: '<b>{n} kcal</b> above plan', below: '<b>{n} kcal</b> below plan',
+    empty: 'Nothing planned.', suggest: 'Suggest a dish', ateOther: 'I ate something else', addTo: 'Add to {m}',
+    swap: 'Swap dish', edited: 'Portions changed', offPlan: 'Off plan',
+    cancel: 'Cancel', save: 'Save', name: 'What did you eat', namePh: 'E.g. margherita pizza at a restaurant',
+    ings: 'Ingredients', addIng: 'Add', chooseFood: 'Choose a food…', grams: 'g',
+    manual: 'I only know calories and macros', manualHint: 'If you fill these in, they count instead of the ingredients.',
+    reset: 'Restore planned portions', replace: 'I ate something else instead', remove: 'Remove from the day',
+    errName: 'Write what you ate.', errEmpty: 'Add at least one ingredient or the calories.',
+    eggs: (n) => n === 1 ? '1 egg' : `${n} eggs`, less: 'Less', more: 'More', del: 'Remove',
+    fine: 'Estimates from average food tables, raw weight. Not medical advice.' },
+  de: { title: 'Was esse ich heute?', titleOn: 'Was esse ich am {d}?', days: 'Tag wählen', pick: 'Anderer Tag', home: 'Website', lang: 'Sprache',
+    sub: 'Ein paar kurze Fragen und ich plane deinen Tag, mit Mengen und Makros. Danach kannst du Gerichte tauschen und eintragen, was du wirklich gegessen hast.',
+    step: 'Frage {n} von {t}', prev: 'Zurück',
+    q_meal: 'Was möchtest du entscheiden?', b: 'Frühstück', l: 'Mittagessen', d: 'Abendessen', s: 'Snack', day: 'Den ganzen Tag',
+    q_taste: 'Süß oder herzhaft?', dolce: 'Süß', salato: 'Herzhaft', any: 'Egal',
+    q_crave: 'Worauf hast du Lust?', pasta: 'Nudeln', riso: 'Reis', carne: 'Fleisch', pesce: 'Fisch', uova: 'Eier',
+    q_temp: 'Warm oder kalt?', caldo: 'Warm, ich esse zu Hause', freddo: 'Kalt, zum Mitnehmen',
+    q_hunger: 'Wie hungrig bist du?', poca: 'Wenig', normale: 'Normal', tanta: 'Sehr',
+    r_day: 'Dein Tag', redo: 'Quiz neu starten',
+    kcal: 'kcal', p: 'Eiweiß', c: 'Kohlenhydrate', f: 'Fett', ps: 'E', cs: 'K', fs: 'F', of: 'von {n} kcal',
+    onPlan: 'Im Plan', above: '<b>{n} kcal</b> über dem Plan', below: '<b>{n} kcal</b> unter dem Plan',
+    empty: 'Nichts geplant.', suggest: 'Gericht vorschlagen', ateOther: 'Ich habe etwas anderes gegessen', addTo: 'Zu {m} hinzufügen',
+    swap: 'Gericht tauschen', edited: 'Mengen geändert', offPlan: 'Außerhalb des Plans',
+    cancel: 'Abbrechen', save: 'Sichern', name: 'Was hast du gegessen', namePh: 'Z. B. Pizza Margherita im Restaurant',
+    ings: 'Zutaten', addIng: 'Hinzufügen', chooseFood: 'Lebensmittel wählen…', grams: 'g',
+    manual: 'Ich kenne nur Kalorien und Makros', manualHint: 'Wenn du sie einträgst, zählen sie statt der Zutaten.',
+    reset: 'Geplante Mengen wiederherstellen', replace: 'Ich habe stattdessen etwas anderes gegessen', remove: 'Aus dem Tag entfernen',
+    errName: 'Schreib, was du gegessen hast.', errEmpty: 'Füge mindestens eine Zutat oder die Kalorien hinzu.',
+    eggs: (n) => n === 1 ? '1 Ei' : `${n} Eier`, less: 'Weniger', more: 'Mehr', del: 'Entfernen',
+    fine: 'Schätzwerte aus Nährwerttabellen, Rohgewicht. Keine medizinische Beratung.' },
+};
+const LANGS = ['it', 'en', 'de'];
+const KEY = 'oggi-v4';
+const SLOTS = ['b', 'l', 's', 'd'];
+const view = document.getElementById('view'), sel = document.getElementById('lang'), daysEl = document.getElementById('days'), sheet = document.getElementById('sheet');
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const r = Math.round;
+
+// Ogni giorno ha il suo diario: { days: { 'AAAA-MM-GG': { ans, res } } }. I giorni passati si cancellano.
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const toDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) };
+const today = iso(new Date());
+// ?day=AAAA-MM-GG dal calendario della home apre direttamente quel giorno.
+const askDay = new URLSearchParams(location.search).get('day');
+let cur = /^\d{4}-\d{2}-\d{2}$/.test(askDay || '') && askDay >= today ? askDay : today;
+const store = {
+  all() { try { return JSON.parse(localStorage.getItem(KEY))?.days || {} } catch { return {} } },
+  save(day, v) {
+    const days = this.all();
+    v ? days[day] = v : delete days[day];
+    for (const k in days) if (k < today) delete days[k];
+    try { localStorage.setItem(KEY, JSON.stringify({ days })) } catch { /* senza memoria funziona lo stesso */ }
+  },
+};
+const saveDay = () => store.save(cur, res ? { ans, res } : null);
+
+function pickLang() {
+  let saved; try { saved = localStorage.getItem('lang') } catch {}
+  for (const c of [new URLSearchParams(location.search).get('lang'), saved, ...(navigator.languages || [navigator.language])]) {
+    const l = (c || '').toLowerCase().slice(0, 2);
+    if (LANGS.includes(l)) return l;
+  }
+  return 'en';
+}
+let lang = pickLang(), t = T[lang], li = LANGS.indexOf(lang);
+
+/* ---------- Domande ---------- */
+const Q = [
+  { id: 'meal', opts: ['b', 'l', 'd', 's', 'day'] },
+  { id: 'taste', if: (a) => ['b', 's', 'day'].includes(a.meal), opts: ['dolce', 'salato', 'any'] },
+  { id: 'crave', if: (a) => ['l', 'd', 'day'].includes(a.meal), opts: ['pasta', 'riso', 'carne', 'pesce', 'uova', 'any'] },
+  { id: 'temp', if: (a) => ['l', 'day'].includes(a.meal), opts: ['caldo', 'freddo', 'any'] },
+  { id: 'hunger', opts: ['poca', 'normale', 'tanta'] },
+];
+let ans = {}, step = 0, res = null;
+const visible = () => Q.filter((q) => !q.if || q.if(ans));
+const chevron = '<svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function renderQuestion() {
+  const qs = visible(), q = qs[step];
+  view.innerHTML = `<section class="fade" aria-labelledby="q">
+    ${step === 0 ? `<h1 class="large">${heading()}</h1><p class="sub">${t.sub}</p>` : ''}
+    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${qs.length}" aria-valuenow="${step}" aria-label="${t.step.replace('{n}', step + 1).replace('{t}', qs.length)}"><span style="width:${(step / qs.length) * 100}%"></span></div>
+    ${step ? `<p class="eyebrow">${t.step.replace('{n}', step + 1).replace('{t}', qs.length)}</p>` : ''}
+    <h2 class="q" id="q">${t['q_' + q.id]}</h2>
+    <div class="list">${q.opts.map((o) => `<button type="button" class="opt${ans[q.id] === o ? ' sel' : ''}" data-o="${o}"><span>${t[o]}</span>${chevron}</button>`).join('')}</div>
+    ${step ? `<button type="button" class="prev" id="prev">‹ ${t.prev}</button>` : ''}
+  </section>`;
+  view.querySelectorAll('.opt').forEach((b) => b.addEventListener('click', () => {
+    ans[q.id] = b.dataset.o;
+    b.classList.add('sel');
+    setTimeout(() => { step++; step >= visible().length ? finish() : renderQuestion() }, 160);
+  }));
+  document.getElementById('prev')?.addEventListener('click', () => { step--; renderQuestion() });
+}
+
+/* ---------- Piano del giorno ---------- */
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a };
+
+// Le preferenze stringono la scelta solo se resta almeno un piatto.
+function pool(slot, a) {
+  const kind = slot === 'l' || slot === 'd' ? 'm' : slot;
+  let p = MEALS.filter((m) => m.slots.includes(kind));
+  const prefs = [];
+  if (kind !== 'm' && a.taste && a.taste !== 'any') prefs.push((m) => m.tags.includes(a.taste));
+  if (kind === 'm' && a.crave && a.crave !== 'any') prefs.push((m) => m.tags.includes(a.crave));
+  if (slot === 'l' && a.temp === 'freddo') prefs.push((m) => m.tags.includes('freddo'));
+  if (slot === 'l' && a.temp === 'caldo') prefs.push((m) => !m.tags.includes('freddo'));
+  for (const f of prefs) { const q = p.filter(f); if (q.length) p = q }
+  return shuffle(p.map((m) => m.id));
+}
+
+const byId = Object.fromEntries(MEALS.map((m) => [m.id, m]));
+const FACTOR = { poca: 0.8, normale: 1, tanta: 1.25 };
+const portion = (id) => byId[id].ing.map(([f, g]) => [f, SCALABLE.has(f) ? Math.round(g * (FACTOR[ans.hunger] || 1) / 5) * 5 : g]);
+const planItem = (id) => ({ id, ing: portion(id) });
+const macros = (ing) => ing.reduce((s, [f, g]) => s.map((v, i) => v + FOODS[f][i] * g / 100), [0, 0, 0, 0]);
+const itemMacros = (it) => it.m || macros(it.ing);
+const sumOf = (items) => items.reduce((s, it) => itemMacros(it).map((v, i) => s[i] + v), [0, 0, 0, 0]);
+const itemName = (it) => it.id ? byId[it.id].names[li] : it.name;
+const isEdited = (it) => it.id && JSON.stringify(it.ing) !== JSON.stringify(portion(it.id));
+const shownIds = () => SLOTS.flatMap((s) => res.meals[s].filter((it) => it.id).map((it) => it.id));
+
+// Si pianifica sempre la giornata intera: l'obiettivo è il totale del piano. Col pasto singolo si mostra solo quello, gli altri si propongono a richiesta.
+function finish() {
+  const queues = {}, picks = {}, used = [];
+  for (const s of SLOTS) {
+    queues[s] = pool(s, ans);
+    picks[s] = queues[s].find((id) => !used.includes(id)) || queues[s][0];
+    used.push(picks[s]);
+  }
+  const all = ans.meal === 'day';
+  const meals = Object.fromEntries(SLOTS.map((s) => [s, all || ans.meal === s ? [planItem(picks[s])] : []]));
+  res = { meals, queues, picks, goal: sumOf(SLOTS.map((s) => planItem(picks[s]))) };
+  saveDay();
+  renderDays();
+  renderResult();
+  if (all) scrollTo(0, 0); else document.getElementById('m-' + ans.meal)?.scrollIntoView({ block: 'start' });
+}
+
+/* ---------- Diario ---------- */
+const ICON = {
+  plus: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  swap: '<svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6A5.5 5.5 0 0 1 13 4.5M13.5 10A5.5 5.5 0 0 1 3 11.5M13 1.5v3h-3M3 14.5v-3h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  plate: '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="13" cy="13" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 4v6M5 4v6M3 7h2M4 10v12M23 4c-2 1.5-2 6 0 8v10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  x: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="m3 3 8 8M11 3l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+};
+
+function ringSvg(val, goal) {
+  const R = 54, C = 2 * Math.PI * R, k = goal ? Math.min(val / goal, 1) : 0;
+  return `<svg width="136" height="136" viewBox="0 0 136 136" aria-hidden="true"><circle class="trk" cx="68" cy="68" r="${R}"/><circle class="val" cx="68" cy="68" r="${R}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - k)).toFixed(1)}"/></svg>`;
+}
+
+function itemRow(it, s, i) {
+  const [k, p, c, f] = itemMacros(it), m = it.id && byId[it.id];
+  const pic = m?.img ? `<img class="thumb" src="${m.img}" alt="" width="64" height="64" loading="lazy">` : `<span class="thumb">${ICON.plate}</span>`;
+  const chip = it.off ? `<span class="chip off">${t.offPlan}</span>` : isEdited(it) ? `<span class="chip">${t.edited}</span>` : '';
+  return `<div class="item" data-s="${s}" data-i="${i}">
+    <button type="button" class="row" data-edit>${pic}<span class="tx"><h3>${esc(itemName(it))}</h3>
+      <p class="meta"><b>${r(k)} ${t.kcal}</b> · ${t.ps} ${r(p)} · ${t.cs} ${r(c)} · ${t.fs} ${r(f)}</p>${chip}</span></button>
+    ${it.id ? `<button type="button" class="ibtn" data-swap aria-label="${t.swap}" title="${t.swap}">${ICON.swap}</button>` : ''}
+  </div>`;
+}
+
+function renderResult() {
+  const tot = sumOf(SLOTS.flatMap((s) => res.meals[s])), goal = res.goal, diff = r(tot[0] - goal[0]);
+  const mac = [['p', 1, 'pro'], ['c', 2, 'carb'], ['f', 3, 'fat']];
+  view.innerHTML = `<section class="fade">
+    <div class="top">
+      <div><p class="eyebrow">${esc(fmt(cur, true))}</p><h1 class="large">${t.r_day}</h1></div>
+      <button type="button" class="redo" id="redo">${t.redo}</button>
+    </div>
+    <div class="sum">
+      <div class="ring${tot[0] > goal[0] * 1.03 ? ' over' : ''}">${ringSvg(tot[0], goal[0])}<div class="mid"><b>${r(tot[0])}</b><span>${t.of.replace('{n}', r(goal[0]))}</span></div></div>
+      <div class="macros">${mac.map(([key, i, col]) => `<div class="mrow"><span>${t[key]}</span><em>${r(tot[i])} / ${r(goal[i])} g</em>
+        <div class="mbar"><i style="width:${Math.min(100, goal[i] ? tot[i] / goal[i] * 100 : 0)}%;background:var(--${col})"></i></div></div>`).join('')}</div>
+      <p class="delta${diff > 0 ? ' up' : ''}"><i></i><span>${Math.abs(diff) < 15 ? t.onPlan : (diff > 0 ? t.above : t.below).replace('{n}', Math.abs(diff))}</span></p>
+    </div>
+    ${SLOTS.map((s) => {
+      const items = res.meals[s], k = sumOf(items)[0];
+      return `<section class="meal" id="m-${s}" aria-label="${t[s]}">
+        <header><h2>${t[s]}</h2>${items.length ? `<span class="k">${r(k)} ${t.kcal}</span>` : ''}
+          <button type="button" class="add" data-add="${s}" aria-label="${t.addTo.replace('{m}', t[s])}">${ICON.plus}</button></header>
+        ${items.length ? items.map((it, i) => itemRow(it, s, i)).join('')
+          : `<div class="empty"><p>${t.empty}</p><button type="button" class="pill tint" data-suggest="${s}">${t.suggest}</button><button type="button" class="pill" data-add="${s}">${t.ateOther}</button></div>`}
+      </section>`;
+    }).join('')}
+    <p class="fine">${t.fine}</p>
+  </section>`;
+  view.querySelectorAll('img.thumb').forEach((img) => img.addEventListener('error', () => img.replaceWith(Object.assign(document.createElement('span'), { className: 'thumb', innerHTML: ICON.plate })), { once: true }));
+  document.getElementById('redo').addEventListener('click', () => { ans = {}; step = 0; res = null; saveDay(); renderDays(); renderQuestion(); scrollTo(0, 0) });
+  view.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => openSheet({ mode: 'add', s: b.dataset.add })));
+  view.querySelectorAll('[data-suggest]').forEach((b) => b.addEventListener('click', () => suggest(b.dataset.suggest)));
+  view.querySelectorAll('.item').forEach((el) => {
+    const s = el.dataset.s, i = +el.dataset.i;
+    el.querySelector('[data-edit]').addEventListener('click', () => openSheet({ mode: 'edit', s, i }));
+    el.querySelector('[data-swap]')?.addEventListener('click', () => swap(s, i));
+  });
+}
+
+// Ridisegna senza perdere lo scroll, facendo apparire l'elemento toccato.
+function rerender(s, i) {
+  const y = scrollY;
+  renderResult();
+  scrollTo(0, y);
+  view.querySelector('section').classList.remove('fade');
+  const el = i != null && view.querySelector(`.item[data-s="${s}"][data-i="${i}"]`);
+  if (el && !matchMedia('(prefers-reduced-motion: reduce)').matches) { el.classList.add('out'); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('out'))) }
+}
+
+// Il prossimo piatto della stessa coda che non è già nella giornata; la coda gira all'infinito.
+function nextFrom(s, after) {
+  const q = res.queues[s], shown = shownIds();
+  let at = q.indexOf(after);
+  for (let n = 0; n < q.length; n++) { at = (at + 1) % q.length; if (!shown.includes(q[at])) return q[at] }
+  return q[(q.indexOf(after) + 1) % q.length];
+}
+function swap(s, i) {
+  const el = view.querySelector(`.item[data-s="${s}"][data-i="${i}"]`), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  res.meals[s][i] = planItem(nextFrom(s, res.meals[s][i].id));
+  saveDay();
+  el.classList.add('out');
+  setTimeout(() => rerender(s, i), still ? 0 : 200);
+}
+function suggest(s) {
+  const id = shownIds().includes(res.picks[s]) ? nextFrom(s, res.picks[s]) : res.picks[s];
+  res.meals[s].push(planItem(id));
+  saveDay(); renderDays(); rerender(s, res.meals[s].length - 1);
+}
+
+/* ---------- Foglio: modifica un piatto o segna cosa hai mangiato ---------- */
+let draft = null;
+const foodName = (f) => FOODS[f][4 + li];
+const foodOpts = () => Object.keys(FOODS).sort((a, b) => foodName(a).localeCompare(foodName(b), lang)).map((f) => `<option value="${f}">${esc(foodName(f))}</option>`).join('');
+const stepOf = (f) => f === 'uova' ? 55 : 10;
+
+// ctx: { mode: 'edit' | 'add' | 'replace', s, i }
+function openSheet(ctx) {
+  const it = ctx.mode === 'edit' ? res.meals[ctx.s][ctx.i] : null;
+  draft = { ...ctx, id: it?.id, name: it?.name || '', ing: it ? it.ing.map((x) => x.slice()) : [], m: it?.m ? it.m.slice() : null, err: '' };
+  draft.custom = !draft.id;
+  renderSheet();
+  sheet.showModal();
+  if (draft.custom && !it) sheet.querySelector('#nm')?.focus();
+}
+
+function liveTotals() {
+  const v = draft.m && draft.m[0] > 0 ? draft.m : macros(draft.ing);
+  return `<div class="kc"><b>${r(v[0])}</b><span>${t.kcal}</span></div><div><b>${r(v[1])}</b><span>${t.p}</span></div><div><b>${r(v[2])}</b><span>${t.c}</span></div><div><b>${r(v[3])}</b><span>${t.f}</span></div>`;
+}
+
+function renderSheet() {
+  const d = draft, title = d.custom ? (d.mode === 'edit' ? d.name : t.addTo.replace('{m}', t[d.s])) : byId[d.id].names[li];
+  sheet.setAttribute('aria-label', title);
+  sheet.innerHTML = `<form method="dialog" novalidate>
+    <div class="sh-h"><button type="button" class="lnk" id="cx">${t.cancel}</button><h2>${esc(title)}</h2><button class="lnk strong" value="save">${t.save}</button></div>
+    <div class="sh-b">
+      ${d.custom ? `<label class="field"><span>${t.name}</span><input class="inp" id="nm" value="${esc(d.name)}" placeholder="${esc(t.namePh)}" autocomplete="off"></label>` : ''}
+      <div class="live" id="live">${liveTotals()}</div>
+      <div class="grp"><h3>${t.ings}</h3>
+        ${d.ing.length ? `<div class="ings">${d.ing.map(([f, g], k) => `<div class="ingr" data-k="${k}">
+          <span class="nm">${esc(foodName(f))}${f === 'uova' ? `<small>${t.eggs(Math.max(1, r(g / 55)))}</small>` : ''}</span>
+          <span class="stp"><button type="button" data-d="-1" aria-label="${t.less}">−</button><input type="number" inputmode="numeric" min="0" step="5" value="${g}" aria-label="${esc(foodName(f))}, ${t.grams}"><em>${t.grams}</em><button type="button" data-d="1" aria-label="${t.more}">+</button></span>
+          <button type="button" class="rm" aria-label="${t.del} ${esc(foodName(f))}">${ICON.x}</button></div>`).join('')}</div>` : ''}
+        <div class="addrow"><select id="af" aria-label="${t.chooseFood}"><option value="">${t.chooseFood}</option>${foodOpts()}</select>
+          <input class="inp g" id="ag" type="number" inputmode="numeric" min="0" step="5" value="100" aria-label="${t.grams}">
+          <button type="button" class="pill tint" id="ab">${t.addIng}</button></div>
+      </div>
+      ${d.custom ? `<details class="grp"${d.m ? ' open' : ''}><summary>${t.manual}</summary>
+        <p class="hint">${t.manualHint}</p>
+        <div class="manual">${[['kcal', 0], ['p', 1], ['c', 2], ['f', 3]].map(([key, n]) => `<label>${t[key]}<input class="inp" type="number" inputmode="decimal" min="0" data-m="${n}" value="${d.m ? d.m[n] : ''}"></label>`).join('')}</div>
+      </details>` : ''}
+      ${d.err ? `<p class="err" role="alert">${d.err}</p>` : ''}
+      ${d.mode === 'edit' ? `<div class="acts">
+        ${d.id ? `<button type="button" id="reset">${t.reset}</button><button type="button" id="repl">${t.replace}</button>` : ''}
+        <button type="button" class="del" id="del">${t.remove}</button></div>` : ''}
+    </div></form>`;
+
+  const live = () => { sheet.querySelector('#live').innerHTML = liveTotals() };
+  sheet.querySelector('#nm')?.addEventListener('input', (e) => { d.name = e.target.value });
+  sheet.querySelectorAll('.ingr').forEach((row) => {
+    const k = +row.dataset.k, inp = row.querySelector('input');
+    inp.addEventListener('input', () => { d.ing[k][1] = Math.max(0, +inp.value || 0); live() });
+    row.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => {
+      d.ing[k][1] = Math.max(0, d.ing[k][1] + stepOf(d.ing[k][0]) * +b.dataset.d);
+      inp.value = d.ing[k][1]; live();
+      const sm = row.querySelector('small'); if (sm) sm.textContent = t.eggs(Math.max(1, r(d.ing[k][1] / 55)));
+    }));
+    row.querySelector('.rm').addEventListener('click', () => { d.ing.splice(k, 1); renderSheet() });
+  });
+  sheet.querySelector('#ab').addEventListener('click', () => {
+    const f = sheet.querySelector('#af').value, g = +sheet.querySelector('#ag').value || 0;
+    if (!f || !g) return sheet.querySelector('#af').focus();
+    const have = d.ing.find((x) => x[0] === f);
+    have ? have[1] += g : d.ing.push([f, g]);
+    d.err = ''; renderSheet();
+  });
+  sheet.querySelectorAll('[data-m]').forEach((inp) => inp.addEventListener('input', () => {
+    d.m ||= [0, 0, 0, 0]; d.m[+inp.dataset.m] = Math.max(0, +inp.value || 0); live();
+  }));
+  sheet.querySelector('#reset')?.addEventListener('click', () => { d.ing = portion(d.id); renderSheet() });
+  sheet.querySelector('#repl')?.addEventListener('click', () => {
+    Object.assign(draft, { mode: 'replace', id: null, custom: true, name: '', ing: [], m: null, err: '' });
+    renderSheet(); sheet.querySelector('#nm').focus();
+  });
+  sheet.querySelector('#del')?.addEventListener('click', () => {
+    res.meals[d.s].splice(d.i, 1); saveDay(); renderDays(); sheet.close(); rerender();
+  });
+  sheet.querySelector('#cx').addEventListener('click', () => sheet.close());
+  sheet.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); saveSheet() });
+}
+
+function saveSheet() {
+  const d = draft;
+  d.ing = d.ing.filter(([, g]) => g > 0);
+  const manual = d.m && d.m[0] > 0;
+  if (d.custom && !d.name.trim()) { d.err = t.errName; return renderSheet() }
+  if (!d.ing.length && !manual) { d.err = t.errEmpty; return renderSheet() }
+  const it = d.custom ? { name: d.name.trim(), ing: manual ? [] : d.ing, off: true, ...(manual ? { m: d.m.map(Number) } : {}) } : { id: d.id, ing: d.ing };
+  const list = res.meals[d.s];
+  let at = d.i;
+  if (d.mode === 'add') { list.push(it); at = list.length - 1 } else list[d.i] = it;
+  saveDay(); renderDays(); sheet.close(); rerender(d.s, at);
+}
+
+sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close() });
+
+/* ---------- Calendario ---------- */
+const fmt = (s, long) => toDate(s).toLocaleDateString(lang, long ? { weekday: 'long', day: 'numeric', month: 'long' } : { weekday: 'short' }).replace('.', '');
+const heading = () => cur === today ? t.title : t.titleOn.replace('{d}', fmt(cur, true));
+const calIcon = '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="14.5" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h16M7.5 2.5v4M14.5 2.5v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+// I prossimi 14 giorni, più il giorno scelto dal calendario se è più avanti.
+function renderDays() {
+  const saved = store.all(), list = [];
+  for (let n = 0; n < 14; n++) { const d = new Date(); d.setDate(d.getDate() + n); list.push(iso(d)) }
+  if (!list.includes(cur)) list.push(cur);
+  daysEl.setAttribute('aria-label', t.days);
+  daysEl.innerHTML = list.map((d) => `<button type="button" class="day${d === today ? ' today' : ''}${saved[d] ? ' has' : ''}" data-d="${d}" aria-pressed="${d === cur}" aria-label="${esc(fmt(d, true))}"><small>${esc(fmt(d))}</small><b>${toDate(d).getDate()}</b></button>`).join('')
+    + `<label class="day pick" title="${t.pick}">${calIcon}<input type="date" min="${today}" value="${cur}" aria-label="${t.pick}"></label>`;
+  daysEl.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => selectDay(b.dataset.d)));
+  daysEl.querySelector('input').addEventListener('change', (e) => e.target.value >= today && selectDay(e.target.value));
+  daysEl.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function selectDay(d) {
+  cur = d;
+  const s = store.all()[d];
+  ans = s?.ans || {}; res = s?.res || null; step = 0;
+  renderDays();
+  res ? renderResult() : renderQuestion();
+}
+
+/* ---------- Lingua e avvio ---------- */
+function applyLang() {
+  t = T[lang]; li = LANGS.indexOf(lang);
+  document.documentElement.lang = lang;
+  document.title = t.title;
+  document.querySelector('#home span').textContent = t.home;
+  sel.value = lang; sel.setAttribute('aria-label', t.lang);
+  if (sheet.open) sheet.close();
+  renderDays();
+  res ? renderResult() : renderQuestion();
+}
+sel.addEventListener('change', () => { lang = sel.value; try { localStorage.setItem('lang', lang) } catch {} applyLang() });
+
+const s0 = store.all()[cur];
+if (s0) { ans = s0.ans; res = s0.res }
+applyLang();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// Sfondo 3D: cibi stilizzati (pomodori, avocado, uova, mirtilli, foglie, rigatoni, broccoli, cetrioli) che fluttuano nella nebbia verde.
+// Si muove piano con lo scroll e il puntatore; con "riduci movimento" resta fermo; si ferma quando la scheda è nascosta.
+(function () {
+  const canvas = document.getElementById('bg');
+  if (!window.THREE) return;
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' }) } catch { return }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0b1f15, 9, 26);
+  const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 60);
+  cam.position.z = 12;
+  scene.add(new THREE.HemisphereLight(0xfff6df, 0x123524, 0.9));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(4, 6, 8); scene.add(sun);
+  const rim = new THREE.DirectionalLight(0xb5e655, 0.5); rim.position.set(-6, -2, -4); scene.add(rim);
+
+  const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0, ...o });
+  const S = (r, seg = 32) => new THREE.SphereGeometry(r, seg, seg);
+  const group = (...ms) => { const g = new THREE.Group(); ms.forEach((m) => g.add(m)); return g };
+  const mesh = (geo, m, f) => { const x = new THREE.Mesh(geo, m); f && f(x); return x };
+
+  const MAKE = [
+    () => group( // pomodoro
+      mesh(S(0.55), mat(0xe8402f, { roughness: 0.35 }), (m) => m.scale.set(1, 0.85, 1)),
+      mesh(new THREE.ConeGeometry(0.22, 0.12, 5), mat(0x3f8f3a), (m) => (m.position.y = 0.48))),
+    () => group( // mezzo avocado
+      mesh(S(0.6), mat(0x2f5d22), (m) => m.scale.set(0.8, 1.05, 0.38)),
+      mesh(S(0.5), mat(0xcfe08a), (m) => { m.scale.set(0.72, 0.95, 0.2); m.position.z = 0.16 }),
+      mesh(S(0.2), mat(0x7a4a2a, { roughness: 0.3 }), (m) => { m.position.set(0, -0.12, 0.25) })),
+    () => mesh(S(0.42), mat(0xf6efe2, { roughness: 0.4 }), (m) => m.scale.set(0.82, 1.08, 0.82)), // uovo
+    () => { // mirtilli
+      const g = new THREE.Group(), m = mat(0x3b3f8f, { roughness: 0.25 });
+      [[0, 0, 0], [0.32, 0.12, 0.05], [-0.18, 0.28, -0.1]].forEach((p) => g.add(mesh(S(0.2, 20), m, (x) => x.position.set(...p))));
+      return g;
+    },
+    () => { // foglia di basilico
+      const sh = new THREE.Shape(); sh.moveTo(0, -0.6); sh.quadraticCurveTo(0.45, -0.1, 0, 0.6); sh.quadraticCurveTo(-0.45, -0.1, 0, -0.6);
+      return mesh(new THREE.ShapeGeometry(sh, 16), mat(0x5fb04a, { side: THREE.DoubleSide, roughness: 0.6 }));
+    },
+    () => mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.75, 24, 1, true), mat(0xe2c27a, { side: THREE.DoubleSide, roughness: 0.7 })), // rigatone
+    () => { // broccolo
+      const g = new THREE.Group(), m = mat(0x3f8f3a, { roughness: 0.8 });
+      g.add(mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.5, 12), mat(0x8fbf5a), (x) => (x.position.y = -0.3)));
+      [[0, 0.1, 0], [0.22, 0, 0.05], [-0.22, 0, 0.05], [0, 0.02, 0.22], [0, 0.02, -0.2]].forEach((p) => g.add(mesh(S(0.22, 16), m, (x) => x.position.set(...p))));
+      return g;
+    },
+    () => group( // fetta di cetriolo
+      mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.08, 32), mat(0x2f6b2a)),
+      mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.09, 32), mat(0xd9efb2, { roughness: 0.4 }))),
+  ];
+
+  const items = [], N = innerWidth < 600 ? 16 : 26;
+  for (let i = 0; i < N; i++) {
+    const o = MAKE[i % MAKE.length]();
+    const sc = 0.7 + Math.random() * 0.9;
+    o.scale.multiplyScalar(sc);
+    o.userData = { x: (Math.random() - 0.5) * 22, y: (Math.random() - 0.5) * 16, z: -Math.random() * 12, sp: 0.15 + Math.random() * 0.35, ph: Math.random() * 6.28,
+      rx: (Math.random() - 0.5) * 0.6, ry: (Math.random() - 0.5) * 0.8 };
+    o.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+    scene.add(o); items.push(o);
+  }
+
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let px = 0, py = 0, t0 = performance.now(), raf = 0;
+  addEventListener('pointermove', (e) => { px = e.clientX / innerWidth - 0.5; py = e.clientY / innerHeight - 0.5 }, { passive: true });
+  function size() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix() }
+  function frame(now) {
+    const t = (now - t0) / 1000, sy = scrollY * 0.0025;
+    for (const o of items) {
+      const u = o.userData;
+      // salgono lentamente e rientrano dal basso
+      const y = ((u.y + t * u.sp * 0.6 + sy * (1 + u.z * -0.05) + 8) % 16 + 16) % 16 - 8;
+      o.position.set(u.x + Math.sin(t * u.sp + u.ph) * 0.4, y, u.z);
+      o.rotation.x += u.rx * 0.01; o.rotation.y += u.ry * 0.01;
+    }
+    cam.position.x += (px * 1.2 - cam.position.x) * 0.04;
+    cam.position.y += (-py * 0.8 - cam.position.y) * 0.04;
+    cam.lookAt(0, 0, -4);
+    renderer.render(scene, cam);
+    if (!still) raf = requestAnimationFrame(frame);
+  }
+  size(); addEventListener('resize', () => { size(); if (still) frame(performance.now()) });
+  document.addEventListener('visibilitychange', () => { cancelAnimationFrame(raf); if (!document.hidden && !still) raf = requestAnimationFrame(frame) });
+  raf = requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

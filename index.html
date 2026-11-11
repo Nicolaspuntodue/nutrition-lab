@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NutritionLab · Ricette fit con le dosi giuste</title>
+<meta name="description" content="Le ricette di @wholefood.daily con dosi, macro e lista della spesa. Disdici quando vuoi.">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F4EC; --surface:#FFFFFF; --ink:#10231B; --muted:#55625B; --line:#E3E0D3;
+  --green:#0E5E3F; --green-soft:#DDEBDD; --accent:#C2410C; --accent-soft:#FBE7DA;
+  --r:18px; --display:"General Sans",system-ui,sans-serif; --body:"General Sans",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+html,body{overflow-x:clip}
+body{background:var(--bg);color:var(--ink);font:400 17px/1.55 var(--body);-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%;height:auto}
+a{color:inherit}
+.wrap{max-width:1160px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.12;letter-spacing:-.015em}
+h2{font-size:clamp(26px,3.2vw,38px)}
+.eyebrow{font:700 13px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;font:700 16px var(--body);text-decoration:none;cursor:pointer;border:2px solid transparent;transition:background .15s,color .15s,border-color .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#9A3412}
+.btn-ghost{border-color:var(--ink);color:var(--ink);background:transparent}
+.btn-ghost:hover{background:var(--ink);color:var(--bg)}
+:focus-visible{outline:3px solid var(--green);outline-offset:3px}
+
+/* nav */
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:68px}
+.logo{font:600 19px var(--display);text-decoration:none;letter-spacing:-.02em}
+.logo span{color:var(--green)}
+.nav ul{display:flex;gap:28px;list-style:none;padding:0}
+.nav ul a{text-decoration:none;font-weight:500;color:var(--muted)}
+.nav ul a:hover{color:var(--ink)}
+.nav .btn{min-height:42px;padding:0 18px;font-size:15px}
+.nav-r{display:flex;align-items:center;gap:10px}
+.lang{height:42px;padding:0 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:500 14px var(--body);cursor:pointer}
+
+/* intro: il piatto si compone allo scroll */
+.compose{height:420vh;position:relative}
+.stage{position:sticky;top:68px;height:calc(100vh - 68px);height:calc(100svh - 68px);display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:48px}
+.stage h1{font-size:clamp(30px,3.6vw,46px);margin:14px 0}
+.stage h1 em{font-style:normal;color:var(--green)}
+.stage .lead{font-size:17px;color:var(--muted);max-width:30em}
+.now{min-height:58px;margin-top:18px;transition:opacity .25s}
+.now b{display:block;font-weight:600;font-size:20px;line-height:1.25}
+.now span{color:var(--muted);font-size:15px}
+.totals{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;max-width:440px}
+.totals div{background:var(--green-soft);border-radius:14px;padding:10px 6px;text-align:center}
+.totals b{display:block;font-weight:600;font-size:20px;color:var(--green);font-variant-numeric:tabular-nums}
+.totals span{font-size:12px;color:var(--muted)}
+.stage .ctas{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0 12px}
+.stage small{color:var(--muted);font-size:14px}
+.plate{position:relative;width:min(100%,calc(100svh - 150px));aspect-ratio:1;justify-self:center;border-radius:24px;overflow:hidden;box-shadow:0 30px 60px rgba(16,35,27,.14)}
+.plate img{position:absolute;display:block;will-change:transform,opacity}
+.plate .base,.plate .full{inset:0;width:100%;height:100%}
+.plate .full{opacity:0}
+.plate .ing{opacity:0;filter:drop-shadow(0 3px 4px rgba(0,0,0,.18))}
+.hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center;transition:opacity .3s}
+.hint i{width:18px;height:28px;border:2px solid var(--muted);border-radius:10px;position:relative}
+.hint i::after{content:"";position:absolute;left:50%;top:5px;width:3px;height:6px;border-radius:2px;background:var(--muted);transform:translateX(-50%);animation:wheel 1.4s infinite}
+@keyframes wheel{to{transform:translate(-50%,8px);opacity:0}}
+
+/* strip */
+.strip{border-block:1px solid var(--line);background:var(--surface)}
+.strip ul{display:flex;justify-content:space-between;gap:24px;list-style:none;padding-block:22px;flex-wrap:wrap}
+.strip li{display:flex;align-items:center;gap:10px;font-weight:500;font-size:16px}
+.strip svg{color:var(--green);flex:none}
+
+section{padding:104px 0}
+
+/* cosa ricevi */
+.get-head{display:flex;justify-content:space-between;align-items:end;gap:40px;margin-bottom:48px}
+.get-head p{max-width:26em;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:28px 24px}
+.card .ic{width:44px;height:44px;border-radius:12px;background:var(--green-soft);color:var(--green);display:grid;place-items:center;margin-bottom:20px}
+.card h3{font-size:19px;margin-bottom:8px}
+.card p{color:var(--muted);font-size:16px}
+.card.hl{background:var(--green);color:#fff;border-color:var(--green)}
+.card.hl p{color:#CFE3D7}
+.card.hl .ic{background:rgba(255,255,255,.14);color:#fff}
+
+/* galleria */
+.gallery{background:var(--ink);color:var(--bg)}
+.gallery .eyebrow{color:#F59E6B}
+.gallery h2{margin:14px 0 48px;max-width:14em}
+.today-cta{margin-top:40px;text-align:center}
+.home-days{margin-top:28px;text-align:center}
+.home-days p{font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#F5C9A8;margin-bottom:12px}
+.home-days nav{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px;justify-content:safe center}
+.home-days nav::-webkit-scrollbar{display:none}
+.home-days a,.home-days label{flex:none;width:54px;min-height:68px;border-radius:16px;background:rgba(255,255,255,.08);color:#fff;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative;cursor:pointer;transition:background .2s,transform .1s}
+.home-days a:hover,.home-days label:hover{background:rgba(255,255,255,.16)}
+.home-days a:active{transform:scale(.95)}
+.home-days small{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;opacity:.7}
+.home-days b{font:600 20px/1 var(--display);font-variant-numeric:tabular-nums}
+.home-days a.now{background:var(--green)}
+.home-days label input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.bento{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.bento figure{position:relative;overflow:hidden;border-radius:16px;aspect-ratio:1}
+.bento img{width:100%;height:100%;object-fit:cover;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+.bento figure:hover img{transform:scale(1.04)}
+.bento figcaption{position:absolute;left:12px;bottom:12px;right:12px;background:rgba(16,35,27,.78);backdrop-filter:blur(6px);color:#fff;font-size:14px;font-weight:500;padding:8px 12px;border-radius:10px}
+
+.dish{all:unset;display:block;width:100%;height:100%;cursor:pointer;position:relative}
+.dish:focus-visible{outline:3px solid #F59E6B;outline-offset:-3px;border-radius:16px}
+.bento figcaption small{display:block;font-size:12px;font-weight:500;color:#F5C9A8;margin-top:2px}
+dialog#dish{margin:auto;border:0;padding:0;border-radius:24px;max-width:760px;width:calc(100% - 32px);background:var(--surface);color:var(--ink);grid-template-columns:1fr 1fr;overflow:hidden}
+dialog#dish[open]{display:grid}
+dialog#dish::backdrop{background:rgba(16,35,27,.55);backdrop-filter:blur(4px)}
+#dish-img{width:100%;height:100%;object-fit:cover}
+.dish-body{padding:28px;max-height:86vh;overflow:auto}
+.dish-body h3{font-size:22px;margin-bottom:6px}
+.dish-per{font:600 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 10px}
+.macros{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.macros div{background:var(--green-soft);border-radius:12px;padding:10px 6px;text-align:center}
+.macros b{display:block;font:600 18px var(--display);color:var(--green)}
+.macros span{font-size:12px;color:var(--muted)}
+#dish-i{list-style:none;padding:0;display:grid;gap:8px}
+#dish-i li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:8px;font-size:15px}
+#dish-i li span:last-child{color:var(--muted);white-space:nowrap}
+.dish-note{font-size:13px;color:var(--muted);margin:14px 0 18px}
+
+/* come funziona */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-top:48px;counter-reset:s}
+.step{border-top:2px solid var(--ink);padding-top:22px}
+.step::before{counter-increment:s;content:"0" counter(s);font:600 14px var(--display);color:var(--accent)}
+.step h3{font-size:21px;margin:10px 0 8px}
+.step p{color:var(--muted)}
+
+/* prezzi */
+.pricing{background:var(--green-soft)}
+.pricing .center{text-align:center;max-width:640px;margin:0 auto 48px}
+.pricing .center p{color:var(--muted);margin-top:14px}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:860px;margin:0 auto}
+.plan{background:var(--surface);border-radius:24px;padding:36px;border:2px solid transparent;display:flex;flex-direction:column}
+.plan.best{border-color:var(--green)}
+.plan .badge{align-self:flex-start;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px;margin-bottom:14px}
+.plan h3{font-size:21px}
+.price{font:600 46px/1 var(--display);margin:18px 0 4px;letter-spacing:-.03em}
+.price .per{font:500 16px var(--body);color:var(--muted);letter-spacing:0}
+.plan .note{color:var(--muted);font-size:15px;min-height:1.5em}
+.plan ul{list-style:none;padding:0;margin:24px 0 32px;display:grid;gap:12px}
+.plan li{display:flex;gap:10px;align-items:flex-start}
+.plan li svg{color:var(--green);flex:none;margin-top:3px}
+.plan .btn{margin-top:auto;width:100%}
+
+/* faq */
+.faq{display:grid;grid-template-columns:1fr 1.4fr;gap:64px}
+details{border-bottom:1px solid var(--line);padding:22px 0}
+summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px;font:600 18px var(--display)}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:26px;line-height:1;color:var(--green);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:var(--muted);margin-top:10px;max-width:36em}
+
+/* cta finale */
+.final{background:var(--accent);color:#fff;border-radius:32px;padding:72px 48px;display:grid;grid-template-columns:1.3fr 1fr;gap:40px;align-items:center}
+.final h2{font-size:clamp(26px,3.4vw,40px)}
+.final p{color:#FDE3D3;margin-top:14px}
+.final .btn{background:#fff;color:var(--accent)}
+.final .btn:hover{background:var(--ink);color:#fff}
+.final img{border-radius:20px;aspect-ratio:1;object-fit:cover}
+
+footer{padding:48px 0 96px;color:var(--muted);font-size:15px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:28px}
+
+/* barra mobile */
+.mbar{display:none}
+
+/* toast demo */
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:#fff;padding:14px 20px;border-radius:14px;font-size:15px;max-width:calc(100% - 32px);transition:opacity .2s,transform .2s;z-index:50}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}.bento img{transition:none}.hint i::after{animation:none}}
+
+@media (max-width:960px){
+  .compose{height:360vh}
+  .stage{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:14px;align-content:start;padding-top:18px}
+  .stage h1{font-size:26px;margin:8px 0 6px}
+  .stage .lead,.stage .ctas,.stage small,.hint{display:none}
+  .now{min-height:50px;margin-top:6px}.now b{font-size:18px}.now span{font-size:14px}
+  .totals{margin-top:8px}.totals b{font-size:17px}
+  .plate{width:min(100%,calc(100svh - 360px));min-width:240px;align-self:start}
+  .cards{grid-template-columns:1fr 1fr}
+  .bento{grid-template-columns:1fr 1fr}
+  .steps,.faq{grid-template-columns:1fr;gap:28px}
+  .final{grid-template-columns:1fr;padding:48px 28px}
+  .final img{display:none}
+  .get-head{flex-direction:column;align-items:flex-start;gap:16px}
+}
+@media (max-width:640px){
+  body{font-size:16px}
+  .nav ul{display:none}
+  .nav-r .btn{display:none}
+  dialog#dish[open]{grid-template-columns:1fr}
+  #dish-img{aspect-ratio:16/10;height:auto}
+  .toast{bottom:96px}
+  section{padding:72px 0}
+  .cards,.plans{grid-template-columns:1fr}
+  .strip ul{flex-direction:column;gap:12px}
+  .plan{padding:28px}
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
+  .mbar b{font:600 19px var(--display)}
+  .mbar span{color:var(--muted);font-size:14px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="#top">Nutrition<span>Lab</span></a>
+    <nav data-i18n-aria="nav" aria-label="Principale">
+      <ul>
+        <li><a href="#cosa" data-i18n="nav_what">Cosa ricevi</a></li>
+        <li><a href="#piatti" data-i18n="nav_dishes">I piatti</a></li>
+        <li><a href="#prezzi" data-i18n="nav_prices">Prezzi</a></li>
+        <li><a href="#faq" data-i18n="nav_faq">Domande</a></li>
+        <li><a href="oggi.html" data-i18n="nav_today">Cosa mangio oggi?</a></li>
+      </ul>
+    </nav>
+    <div class="nav-r">
+      <select id="lang" class="lang" aria-label="Lingua" data-i18n-aria="lang"><option value="it">Italiano</option><option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option><option value="es">Español</option><option value="sv">Svenska</option><option value="no">Norsk</option></select>
+      <a class="btn btn-primary" href="#prezzi" data-i18n="subscribe">Abbonati</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="compose" id="compose">
+    <div class="wrap stage">
+      <div class="copy">
+        <p class="eyebrow" data-i18n="eyebrow_from">Da @wholefood.daily</p>
+        <h1 data-i18n="h1">Le ricette di TikTok, <em>con le dosi giuste.</em></h1>
+        <p class="lead" data-i18n="lead">Piatti fit fatti in casa, con grammi, macro e lista della spesa. Cucini quello che vedi nei video, senza indovinare.</p>
+        <div class="now" id="now" aria-live="polite"><b>Scorri per comporre il piatto</b><span>Grammi e macro si sommano mentre lo costruisci.</span></div>
+        <div class="totals">
+          <div><b id="t-kcal">0</b><span>kcal</span></div>
+          <div><b id="t-p">0 g</b><span data-i18n="d_p">Proteine</span></div>
+          <div><b id="t-c">0 g</b><span data-i18n="d_c">Carboidrati</span></div>
+          <div><b id="t-f">0 g</b><span data-i18n="d_f">Grassi</span></div>
+        </div>
+        <div class="ctas">
+          <a class="btn btn-primary" href="#prezzi" data-i18n="cta_sub">Abbonati da 7,99 € al mese</a>
+          <a class="btn btn-ghost" href="#piatti" data-i18n="cta_see">Guarda i piatti</a>
+        </div>
+        <small data-i18n="cancel_note">Disdici quando vuoi, in due clic.</small>
+      </div>
+      <div class="plate" id="plate">
+        <img class="base" src="img/intro/piatto.webp" alt="" width="1024" height="1024" fetchpriority="high">
+        <img class="full" id="full" src="img/intro/piatto-pieno.webp" alt="Bowl con tonno, riso venere, uova sode, feta, cetrioli e pomodori" data-i18n-alt="hero_alt" width="1024" height="1024">
+      </div>
+      <p class="hint" id="hint" aria-hidden="true"><i></i><span data-i18n="c_hint">Scorri</span></p>
+    </div>
+  </section>
+
+  <div class="strip">
+    <ul class="wrap">
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="strip1">Grammi e porzioni per ogni piatto</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="strip2">Calorie e macro calcolati</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="strip3">Ingredienti da supermercato</span></li>
+      <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="strip4">Pronti in 15-30 minuti</span></li>
+    </ul>
+  </div>
+
+  <section id="cosa">
+    <div class="wrap">
+      <div class="get-head rv">
+        <div>
+          <p class="eyebrow" data-i18n="nav_what">Cosa ricevi</p>
+          <h2 style="margin-top:14px" data-i18n="what_h2">Più di quello che entra in un video.</h2>
+        </div>
+        <p data-i18n="what_p">Su TikTok vedi il piatto finito. Qui trovi tutto quello che serve per rifarlo uguale, e un piano per non pensarci tutta la settimana.</p>
+      </div>
+      <div class="cards">
+        <article class="card hl rv">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2"/><path d="M8 7h7"/></svg></div>
+          <h3 data-i18n="c1h">Le ricette dei video</h3>
+          <p data-i18n="c1p">I piatti che pubblico su TikTok, scritti per intero: ingredienti, passaggi e tempi.</p>
+        </article>
+        <article class="card rv">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+          <h3 data-i18n="c2h">Sempre sul telefono</h3>
+          <p data-i18n="c2p">Tutto sta nella tua area riservata: la apri mentre fai la spesa o mentre cucini.</p>
+        </article>
+        <article class="card rv">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
+          <h3 data-i18n="c3h">Dosi e macro</h3>
+          <p data-i18n="c3p">Grammi, calorie, proteine, carboidrati e grassi per porzione, già calcolati.</p>
+        </article>
+        <article class="card rv">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div>
+          <h3 data-i18n="c4h">Spesa e piano settimanale</h3>
+          <p data-i18n="c4p">Una lista unica per la settimana e un'idea di meal prep per la domenica.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="piatti" class="gallery">
+    <div class="wrap">
+      <p class="eyebrow rv" data-i18n="gal_eyebrow">Dal mio piatto</p>
+      <h2 class="rv" data-i18n="gal_h2">Cucina vera, fotografata sul tavolo di casa.</h2>
+      <div class="bento">
+        <figure class="rv"><button type="button" class="dish" data-dish="0"><img src="img/pasta-uova-pomodoro.jpg" alt="Rigatoni, uova al pomodoro e feta" data-i18n-alt="g1" loading="lazy"><figcaption><span data-i18n="g1">Rigatoni, uova al pomodoro e feta</span><small data-i18n="d_hint">Vedi dosi e macro</small></figcaption></button></figure>
+        <figure class="rv"><button type="button" class="dish" data-dish="1"><img src="img/yogurt-mirtilli-banana.jpg" alt="Yogurt, banana, mirtilli e burro d'arachidi" data-i18n-alt="g2" loading="lazy"><figcaption><span data-i18n="g2">Yogurt, banana, mirtilli e burro d'arachidi</span><small data-i18n="d_hint">Vedi dosi e macro</small></figcaption></button></figure>
+        <figure class="rv"><button type="button" class="dish" data-dish="2"><img src="img/riso-macinato-arachidi.jpg" alt="Riso, macinato e crema d'arachidi" data-i18n-alt="g3" loading="lazy"><figcaption><span data-i18n="g3">Riso, macinato e crema d'arachidi</span><small data-i18n="d_hint">Vedi dosi e macro</small></figcaption></button></figure>
+        <figure class="rv"><button type="button" class="dish" data-dish="3"><img src="img/uova-toast.jpg" alt="Uova e toast con yogurt e marmellata" data-i18n-alt="g4" loading="lazy"><figcaption><span data-i18n="g4">Uova e toast con yogurt e marmellata</span><small data-i18n="d_hint">Vedi dosi e macro</small></figcaption></button></figure>
+        <figure class="rv"><button type="button" class="dish" data-dish="4"><img src="img/riso-pollo-speziato.jpg" alt="Riso e pollo speziato" data-i18n-alt="g5" loading="lazy"><figcaption><span data-i18n="g5">Riso e pollo speziato</span><small data-i18n="d_hint">Vedi dosi e macro</small></figcaption></button></figure>
+        <figure class="rv"><button type="button" class="dish" data-dish="5"><img src="img/rosti-tacchino.jpg" alt="Rösti di patate e tacchino speziato" data-i18n-alt="g6" loading="lazy"><figcaption><span data-i18n="g6">Rösti di patate e tacchino speziato</span><small data-i18n="d_hint">Vedi dosi e macro</small></figcaption></button></figure>
+      </div>
+      <p class="today-cta rv"><a class="btn btn-primary" href="oggi.html" data-i18n="today_cta">Non sai cosa mangiare? Rispondi a poche domande</a></p>
+      <div class="home-days rv"><p data-i18n="today_pick">Oppure scegli il giorno</p><nav id="homeDays"></nav></div>
+    </div>
+  </section>
+
+  <section id="come">
+    <div class="wrap">
+      <p class="eyebrow rv" data-i18n="how_eyebrow">Come funziona</p>
+      <h2 class="rv" style="margin-top:14px" data-i18n="how_h2">Tre passaggi, poi si cucina.</h2>
+      <div class="steps">
+        <div class="step rv"><h3 data-i18n="s1h">Ti abboni</h3><p data-i18n="s1p">Scegli mensile o annuale e paghi con carta, Apple Pay o Google Pay.</p></div>
+        <div class="step rv"><h3 data-i18n="s2h">Entri nell'area riservata</h3><p data-i18n="s2p">Accedi con la tua email e trovi subito tutte le ricette.</p></div>
+        <div class="step rv"><h3 data-i18n="s3h">Cucini</h3><p data-i18n="s3p">Ogni ricetta ha dosi, macro e lista della spesa, da tenere sul telefono o stampare.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="prezzi" class="pricing">
+    <div class="wrap">
+      <div class="center rv">
+        <p class="eyebrow" data-i18n="nav_prices">Prezzi</p>
+        <h2 style="margin-top:14px" data-i18n="pr_h2">Meno di un pranzo fuori.</h2>
+        <p data-i18n="pr_p">Nessun vincolo: disdici quando vuoi.</p>
+      </div>
+      <div class="plans">
+        <article class="plan rv">
+          <h3 data-i18n="m_h">Mensile</h3>
+          <p class="price"><span data-i18n="price_m">7,99 €</span> <span class="per" data-i18n="per_month">/ mese</span></p>
+          <p class="note" data-i18n="m_note">Rinnovo automatico, disdici quando vuoi</p>
+          <ul>
+            <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="m_li1">Tutte le ricette dell'area riservata</span></li>
+            <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="m_li2">Passaggi chiari, pronti in 15-30 minuti</span></li>
+            <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="m_li3">Dosi, macro e lista della spesa</span></li>
+          </ul>
+          <a class="btn btn-ghost js-buy" href="#" data-plan="mensile" data-i18n="m_btn">Scegli il mensile</a>
+        </article>
+        <article class="plan best rv">
+          <span class="badge" data-i18n="badge">2 mesi in regalo</span>
+          <h3 data-i18n="y_h">Annuale</h3>
+          <p class="price"><span data-i18n="price_y">79 €</span> <span class="per" data-i18n="per_year">/ anno</span></p>
+          <p class="note" data-i18n="y_note">Circa 6,58 € al mese</p>
+          <ul>
+            <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="y_li1">Tutto quello del mensile</span></li>
+            <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="y_li2">Piano settimanale con meal prep</span></li>
+            <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="y_li3">Richieste di ricette prioritarie</span></li>
+          </ul>
+          <a class="btn btn-primary js-buy" href="#" data-plan="annuale" data-i18n="y_btn">Scegli l'annuale</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap faq">
+      <div class="rv">
+        <p class="eyebrow" data-i18n="nav_faq">Domande</p>
+        <h2 style="margin-top:14px" data-i18n="faq_h2">Prima di abbonarti.</h2>
+      </div>
+      <div class="rv">
+        <details open><summary data-i18n="q1">Le ricette sono le stesse dei video?</summary><p data-i18n="a1">Sì, sono i piatti che pubblico su TikTok. La differenza è che qui trovi grammi, passaggi, macro e lista della spesa, che in un video di pochi secondi non ci stanno.</p></details>
+        <details><summary data-i18n="q2">Posso disdire quando voglio?</summary><p data-i18n="a2">Sì, dalla tua area personale, senza penali. L'abbonamento resta attivo fino alla fine del periodo già pagato.</p></details>
+        <details><summary data-i18n="q3">Devo saper cucinare bene?</summary><p data-i18n="a3">No. Sono piatti semplici, con ingredienti da supermercato, e la maggior parte si prepara in 15-30 minuti.</p></details>
+        <details><summary data-i18n="q4">Vanno bene se mi alleno?</summary><p data-i18n="a4">Sono pensate per chi vuole mangiare bene con tante proteine. Le dosi sono indicative: se segui un piano alimentare, adattale con il tuo nutrizionista.</p></details>
+        <details><summary data-i18n="q5">E se ho allergie o intolleranze?</summary><p data-i18n="a5">Ogni ricetta elenca gli ingredienti principali e i possibili allergeni. Controlla sempre le etichette dei prodotti che compri.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="final rv">
+      <div>
+        <h2 data-i18n="fin_h2">Il prossimo piatto lo cucini tu.</h2>
+        <p data-i18n="fin_p">Abbonati oggi e trovi subito tutte le ricette nella tua area.</p>
+        <a class="btn" href="#prezzi" style="margin-top:28px" data-i18n="fin_btn">Vedi i piani</a>
+      </div>
+      <img src="img/yogurt-banana-avena.jpg" alt="Yogurt con banana, fiocchi d'avena e burro d'arachidi" data-i18n-alt="fin_alt" loading="lazy">
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 NutritionLab</span>
+    <a href="https://www.tiktok.com/@wholefood.daily" target="_blank" rel="noopener">TikTok @wholefood.daily</a>
+  </div>
+</footer>
+
+<div class="mbar"><div><b data-i18n="price_m">7,99 €</b> <span data-i18n="per_month">/ mese</span></div><a class="btn btn-primary" href="#prezzi" data-i18n="subscribe">Abbonati</a></div>
+<dialog id="dish" aria-labelledby="dish-t">
+  <img id="dish-img" alt="" width="1200" height="1200">
+  <div class="dish-body">
+    <h3 id="dish-t"></h3>
+    <p class="dish-per" data-i18n="d_per">Valori per porzione</p>
+    <div class="macros" id="dish-m"></div>
+    <p class="dish-per" data-i18n="d_ing">Ingredienti per 1 porzione</p>
+    <ul id="dish-i"></ul>
+    <p class="dish-note" data-i18n="d_note">Stime con valori nutrizionali medi, pesi a crudo.</p>
+    <button type="button" class="btn btn-ghost" id="dish-x" data-i18n="d_close">Chiudi</button>
+  </div>
+</dialog>
+<div class="toast" role="status" aria-live="polite"></div>
+
+<script src="i18n.js"></script>
+<script>
+// Calendario in home: i prossimi 14 giorni, ognuno apre il quiz su quel giorno. Si ridisegna quando cambia la lingua.
+(function () {
+  const el = document.getElementById('homeDays'), iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const cal = '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="4.5" width="16" height="14.5" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h16M7.5 2.5v4M14.5 2.5v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  function render() {
+    const lang = document.documentElement.lang || 'it', html = [];
+    for (let n = 0; n < 14; n++) {
+      const d = new Date(); d.setDate(d.getDate() + n);
+      const wd = d.toLocaleDateString(lang, { weekday: 'short' }).replace('.', ''), full = d.toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+      html.push(`<a href="oggi.html?day=${iso(d)}"${n ? '' : ' class="now"'} aria-label="${full}"><small>${wd}</small><b>${d.getDate()}</b></a>`);
+    }
+    el.innerHTML = html.join('') + `<label aria-label="${document.querySelector('[data-i18n="today_pick"]').textContent}">${cal}<input type="date" min="${iso(new Date())}"></label>`;
+    el.querySelector('input').addEventListener('change', (e) => { if (e.target.value) location.href = 'oggi.html?day=' + e.target.value });
+  }
+  render();
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+})();
+</script>
+<script>
+// Demo: qui andrà il link di pagamento (Stripe Checkout, Patreon o Whop)
+const toast = document.querySelector('.toast');
+document.querySelectorAll('.js-buy').forEach(b => b.addEventListener('click', e => {
+  e.preventDefault();
+  toast.textContent = T.toast.replace('{plan}', T[b.dataset.plan === 'mensile' ? 'm_h' : 'y_h'].toLowerCase());
+  toast.classList.add('on');
+  clearTimeout(toast.t); toast.t = setTimeout(() => toast.classList.remove('on'), 2800);
+}));
+// scheda del piatto: dosi e macro (stime) nella lingua attiva
+const dlg = document.getElementById('dish');
+document.querySelectorAll('.dish').forEach(b => b.addEventListener('click', () => {
+  const d = DISHES[b.dataset.dish], t = window.T, n = +b.dataset.dish + 1;
+  document.getElementById('dish-img').src = d.img;
+  document.getElementById('dish-img').alt = t['g' + n];
+  document.getElementById('dish-t').textContent = t['g' + n];
+  document.getElementById('dish-m').innerHTML = [[d.kcal, 'kcal'], [d.p + ' g', t.d_p], [d.c + ' g', t.d_c], [d.f + ' g', t.d_f]]
+    .map(([v, k]) => `<div><b>${v}</b><span>${k}</span></div>`).join('');
+  document.getElementById('dish-i').innerHTML = d.ing
+    .map(([k, g, c]) => `<li><span>${t['i_' + k]}</span><span>${g ? (c ? c + ' (' + g + ' g)' : g + ' g') : t.d_qb}</span></li>`).join('');
+  dlg.showModal();
+}));
+document.getElementById('dish-x').addEventListener('click', () => dlg.close());
+dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+// intro: il piatto si compone allo scroll. Ritagli veri della stessa foto, stime con le porzioni di Nicolas.
+// Ogni ingrediente nuovo entra SOTTO quelli già posati e arriva da fuori lungo la sua direzione, così non si sovrappone.
+const ING = [
+  { k: 'i_venere',   g: '75 g',      m: [262, 6.0, 56.3, 1.9], img: 'riso',     box: [31.45, 27.93, 36.32, 34.47] },
+  { k: 'i_tonnonat', g: '120 g',     m: [124, 28.8, 0, 1.2],   img: 'tonno',    box: [17.19, 1.95, 73.73, 43.85] },
+  { k: 'i_uovasode', g: '2 (110 g)', m: [157, 13.8, 0.8, 11],  img: 'uova',     box: [60.25, 38.38, 35.75, 41.21] },
+  { k: 'i_feta',     g: '30 g',      m: [80, 4.2, 1.2, 6.3],   img: 'feta',     box: [6.54, 17.19, 29.2, 30.95] },
+  { k: 'i_cetrioli', g: '100 g',     m: [15, 0.7, 3.6, 0.1],   img: 'cetrioli', box: [6.84, 41.5, 34.86, 42.78] },
+  { k: 'i_pomodori', g: '120 g',     m: [22, 1.1, 4.7, 0.2],   img: 'pomodori', box: [15.72, 53.32, 61.23, 39.55] },
+];
+const sec = document.getElementById('compose'), plate = document.getElementById('plate'), full = document.getElementById('full');
+const SPAN = 1 / (ING.length + 1), TRAVEL = 14;            // TRAVEL: how far a piece starts outside its spot, % of the plate
+let under = full;
+ING.forEach((it, i) => {
+  const d = new Image(); d.src = `img/intro/${it.img}.webp`; d.alt = ''; d.className = 'ing';
+  Object.assign(d.style, { left: it.box[0] + '%', top: it.box[1] + '%', width: it.box[2] + '%', height: it.box[3] + '%' });
+  const dx = it.box[0] + it.box[2] / 2 - 50, dy = it.box[1] + it.box[3] / 2 - 49, len = Math.hypot(dx, dy);
+  it.dir = len < 6 ? [0, -1] : [dx / len, dy / len];
+  plate.insertBefore(d, under); under = d; it.el = d;
+});
+const clamp = v => Math.min(1, Math.max(0, v));
+const smooth = x => x * x * (3 - 2 * x);
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const el = id => document.getElementById(id);
+let target = 0, cur = 0, shown = -2, ticking = false;
+function readScroll() { target = still ? 1 : clamp(-sec.getBoundingClientRect().top / (sec.offsetHeight - innerHeight)); }
+function draw() {
+  const pw = plate.clientWidth / 100, tot = [0, 0, 0, 0], t = window.T;
+  ING.forEach((it, i) => {
+    const e = smooth(clamp((cur - i * SPAN * .9) / (SPAN * 1.5)));
+    it.el.style.opacity = e;
+    it.el.style.transform = `translate(${it.dir[0] * TRAVEL * pw * (1 - e)}px, ${it.dir[1] * TRAVEL * pw * (1 - e)}px) scale(${.94 + .06 * e})`;
+    it.m.forEach((v, k) => tot[k] += v * e);
+  });
+  full.style.opacity = smooth(clamp((cur - ING.length * SPAN * .9) / SPAN));
+  el('t-kcal').textContent = Math.round(tot[0]);
+  ['p', 'c', 'f'].forEach((k, i) => el('t-' + k).textContent = Math.round(tot[i + 1]) + ' g');
+  const step = cur < .01 ? -1 : Math.min(Math.floor(cur / SPAN), ING.length);
+  if (step !== shown) {
+    shown = step;
+    const now = el('now');
+    now.style.opacity = 0;
+    setTimeout(() => {
+      now.innerHTML = step < 0 ? `<b>${t.c_start}</b><span>${t.c_start_sub}</span>`
+        : step < ING.length ? `<b>${t[ING[step].k]}</b><span>${ING[step].g}</span>`
+        : `<b>${t.c_final}</b><span>${t.c_final_sub}</span>`;
+      now.style.opacity = 1;
+    }, still ? 0 : 140);
+  }
+  el('hint').style.opacity = cur > .03 ? 0 : 1;
+}
+function loop() {
+  cur += (target - cur) * .14;                              // follows the scroll with a little inertia
+  if (Math.abs(target - cur) < .0004) cur = target;
+  draw();
+  ticking = cur !== target;
+  if (ticking) requestAnimationFrame(loop);
+}
+function kick() { readScroll(); if (!ticking) { ticking = true; requestAnimationFrame(loop); } }
+addEventListener('scroll', kick, { passive: true });
+addEventListener('resize', kick);
+document.getElementById('lang').addEventListener('change', () => { shown = -2; draw(); });
+readScroll(); cur = target; draw();
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+document.querySelectorAll('.rv').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
